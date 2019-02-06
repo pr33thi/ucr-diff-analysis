@@ -34,6 +34,7 @@ def initialize_csv(args):
     """
     with open(args.output_file, mode='w') as output_file:
         output_writer = csv.writer(output_file, delimiter=',')
+        output_writer.writerow(["Log file: {}".format(args.log_filename)])
         output_writer.writerow(['index #', 'completely_different', 'i_total_records_diff', 'total_row_diff'])
 
 def analyze_ucr_diff(args, full_diff):
@@ -95,9 +96,20 @@ def _get_total_row_diff(diff_line):
     :param diff_line: The line of the diff that is being analyzed
     :return: The difference in the 'Totals' row of the report (if no entry is found, returns 0 by default)
     """
-    if diff_line[-1][0][0] == 'total_row':
-        return diff_line[-1]
-    return 0
+    total_row_diff = []
+    for diff_entry in diff_line:
+        if diff_entry[0][0] == 'total_row':
+            try:
+                diff_entry_current_row = diff_entry[0]
+                diff_entry_next_row = diff_entry[1]
+                diff_value = diff_entry_next_row
+            except IndexError:
+                total_row_diff.append("Malformed total_row: {}".format(diff_entry))
+            if len(diff_entry_current_row) == 1: # The whole row is different
+                return diff_value[1:]
+            else: # only certain entries are different
+                total_row_diff.append('index: {}, value: {}'.format(diff_entry_current_row[1], diff_value))
+    return total_row_diff
 
 if __name__ == "__main__":
     args = parse_args()
