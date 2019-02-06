@@ -24,7 +24,8 @@ def parse_log_file(args):
     with open(log_file, 'r') as file:
         log_file = file.readlines()
         for index, log_line in enumerate(log_file):
-            full_diff.append(eval(log_line.split('\t')[-1].replace("null", "None")))
+            full_diff.append({"diff_analysis": eval(log_line.split('\t')[-1].replace("null", "None")),
+                              "report_config_id": log_line.split('\t')[2]})
     return full_diff
 
 def initialize_csv(args):
@@ -35,7 +36,7 @@ def initialize_csv(args):
     with open(args.output_file, mode='w') as output_file:
         output_writer = csv.writer(output_file, delimiter=',')
         output_writer.writerow(["Log file: {}".format(args.log_filename)])
-        output_writer.writerow(['index #', 'completely_different', 'i_total_records_diff', 'total_row_diff'])
+        output_writer.writerow(['index #', 'report_config_id', 'completely_different', 'i_total_records_diff', 'total_row_diff'])
 
 def analyze_ucr_diff(args, full_diff):
     """
@@ -52,12 +53,14 @@ def analyze_ucr_diff(args, full_diff):
     """
     i_total_records_diff = 0
     total_row_diff = 0
-    for index, diff_line in enumerate(full_diff):
-        completely_different = _is_completely_different(diff_line)
+    for index, diff in enumerate(full_diff):
+        diff_analysis = diff['diff_analysis']
+        report_config_id = diff['report_config_id']
+        completely_different = _is_completely_different(diff_analysis)
         if not completely_different:
-            i_total_records_diff = _get_i_total_records_diff(diff_line)
-            total_row_diff = _get_total_row_diff(diff_line)
-        _append_to_csv(args, csv_row=[index, completely_different, i_total_records_diff, total_row_diff])
+            i_total_records_diff = _get_i_total_records_diff(diff_analysis)
+            total_row_diff = _get_total_row_diff(diff_analysis)
+        _append_to_csv(args, csv_row=[index, report_config_id, completely_different, i_total_records_diff, total_row_diff])
 
 def _append_to_csv(args, csv_row):
     """
