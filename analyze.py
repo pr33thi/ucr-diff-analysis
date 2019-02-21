@@ -8,7 +8,7 @@ def parse_args():
     parser.add_argument('--log', dest='log_filename', required=True,
                         help='File in the log/ directory to analyze')
     parser.add_argument('--o', dest='output_file', required=False,
-                        help='output csv name', default='analysis.csv')
+                        help='output csv name', default='analysis_golden.csv')
     args = parser.parse_args()
     return args
 
@@ -58,19 +58,13 @@ def analyze_ucr_diff(args, full_diff):
     :param args: Command line args
     :param full_diff: The list of lists of parsed rows
     """
-    i_total_records_diff = 0
-    total_row_diff = 0
     for index, diff in enumerate(full_diff):
         diff_analysis = diff['diff_analysis']
-        report_config_id = diff['report_config_id']
         completely_different = _is_completely_different(diff_analysis)
         if not completely_different:
-            i_total_records_diff = _get_i_total_records_diff(diff_analysis)
             total_row_diff = _get_total_row_diff(diff_analysis)
-        _append_to_csv(args, csv_row=[index, report_config_id,
-                                      completely_different,
-                                      i_total_records_diff,
-                                      total_row_diff['indices'],
+        _append_to_csv(args, csv_row=[index, diff['report_config_id'], completely_different,
+                                      _get_i_total_records_diff(diff_analysis), total_row_diff['indices'],
                                       total_row_diff['diff_values']])
 
 
@@ -117,21 +111,30 @@ def _get_total_row_diff(diff_line):
     total_row_diff = {'diff_values': [], 'indices': []}
     for diff_entry in diff_line:
         if diff_entry[0][0] == 'total_row':
-            try:
-                diff_entry_current_row = diff_entry[0]
-                diff_value = diff_entry[1]
-            except IndexError:
-                total_row_diff.append("Malformed total_row: {}".format(diff_entry))
-            if len(diff_entry_current_row) == 1: # The whole row is different
-                for index, nonzero_diff in enumerate(diff_value[1:]):
-                    if nonzero_diff:
-                        total_row_diff['indices'].append(index)
-                        total_row_diff['diff_values'].append(nonzero_diff)
-                return total_row_diff
-            else: # only certain entries are different
-                total_row_diff['indices'].append(diff_entry_current_row[1])
-                total_row_diff['diff_values'].append(diff_value)
+            _extract_values_from_total_row(total_row_diff, diff_entry)
     return total_row_diff
+
+
+def _extract_values_from_total_row(total_row_diff, diff_row):
+    try:
+        diff_index = diff_row[0]
+        diff_value = diff_row[1]
+    except IndexError:
+        _append_to_diff(total_row_diff,
+                        "Malformed total_row: {}".format(diff_row), "Malformed total_row: {}".format(diff_row))
+    if len(diff_index) == 1:
+        # If the whole row is returned, append all nonzero entries
+        [_append_to_diff(total_row_diff, index, nonzero_diff) for index, nonzero_diff in enumerate(diff_value[1:])
+         if nonzero_diff]
+    else:  # only certain entries are returned
+        _append_to_diff(total_row_diff, diff_index[1], diff_value)
+    return total_row_diff
+
+
+def _append_to_diff(diff, index, value):
+    diff['indices'].append(index)
+    diff['diff_values'].append(value)
+
 
 if __name__ == "__main__":
     args = parse_args()
