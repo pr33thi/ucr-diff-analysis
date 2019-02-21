@@ -25,7 +25,8 @@ def parse_log_file(args):
     with open(log_file, 'r') as file:
         log_file = file.readlines()
         for index, log_line in enumerate(log_file):
-            full_diff.append({"diff_analysis": eval(log_line.split('\t')[-1].replace("null", "None")),
+            full_diff.append({"candidate_diff": eval(log_line.split('\t')[5].replace("null", "None")),
+                              "control_values": eval(log_line.split('\t')[4].replace("null", "None")),
                               "report_config_id": log_line.split('\t')[2]})
     return full_diff
 
@@ -42,7 +43,9 @@ def initialize_csv(args):
                                 'completely_different',
                                 'i_total_records_diff',
                                 'total_row_diff_indices',
-                                'total_row_diff_values'])
+                                'total_row_candidate_values',
+                                'total_row_candidate_values',
+                                'candidate - control value'])
 
 
 def analyze_ucr_diff(args, full_diff):
@@ -59,13 +62,16 @@ def analyze_ucr_diff(args, full_diff):
     :param full_diff: The list of lists of parsed rows
     """
     for index, diff in enumerate(full_diff):
-        diff_analysis = diff['diff_analysis']
-        completely_different = _is_completely_different(diff_analysis)
+        candidate_diff = diff['candidate_diff']
+        control_values = diff['control_values']
+        completely_different = _is_completely_different(candidate_diff)
         if not completely_different:
-            total_row_diff = _get_total_row_diff(diff_analysis)
+            total_row_diff = _get_total_row_diff(candidate_diff, control_values)
         _append_to_csv(args, csv_row=[index, diff['report_config_id'], completely_different,
-                                      _get_i_total_records_diff(diff_analysis), total_row_diff['indices'],
-                                      total_row_diff['diff_values']])
+                                      _get_i_total_records_diff(candidate_diff), total_row_diff['indices'],
+                                      total_row_diff['candidate_values'],
+                                      total_row_diff['control_values'],
+                                      total_row_diff['candidate_control_diff']])
 
 
 def _append_to_csv(args, csv_row):
@@ -102,38 +108,43 @@ def _get_i_total_records_diff(diff_line):
     return 0
 
 
-def _get_total_row_diff(diff_line):
+def _get_total_row_diff(candidate_diff, control_values):
     """
     Gets the diff in the row of 'Totals' at the bottom of the report
-    :param diff_line: The line of the diff that is being analyzed
+    :param candidate_diff: The line of the diff that is being analyzed
     :return: The difference in the 'Totals' row of the report (if no entry is found, returns 0 by default)
     """
-    total_row_diff = {'diff_values': [], 'indices': []}
-    for diff_entry in diff_line:
-        if diff_entry[0][0] == 'total_row':
-            _extract_values_from_total_row(total_row_diff, diff_entry)
+    total_row_diff = {'candidate_values': [], 'control_values': [], 'indices': [], 'candidate_control_diff': []}
+    for candidate_diff_entry in candidate_diff:
+        if candidate_diff_entry[0][0] == 'total_row':
+            _extract_values_from_total_row(total_row_diff, candidate_diff_entry, control_values['total_row'])
     return total_row_diff
 
 
-def _extract_values_from_total_row(total_row_diff, diff_row):
+def _extract_values_from_total_row(total_row_diff, candidate_diff_entry, control_values_entry):
     try:
-        diff_index = diff_row[0]
-        diff_value = diff_row[1]
+        diff_index = candidate_diff_entry[0]
+        diff_value = candidate_diff_entry[1]
     except IndexError:
         _append_to_diff(total_row_diff,
-                        "Malformed total_row: {}".format(diff_row), "Malformed total_row: {}".format(diff_row))
+                        "Malformed total_row: {}".format(candidate_diff_entry), "", "")
     if len(diff_index) == 1:
         # If the whole row is returned, append all nonzero entries
-        [_append_to_diff(total_row_diff, index, nonzero_diff) for index, nonzero_diff in enumerate(diff_value[1:])
-         if nonzero_diff]
+        for index, nonzero_candidate_diff in enumerate(diff_value[1:]):
+            if nonzero_candidate_diff:
+                _append_to_diff(total_row_diff, index, nonzero_candidate_diff, control_values_entry[1])
+
     else:  # only certain entries are returned
-        _append_to_diff(total_row_diff, diff_index[1], diff_value)
+        _append_to_diff(total_row_diff, diff_index[1], diff_value, control_values_entry[diff_index[1]])
     return total_row_diff
 
 
-def _append_to_diff(diff, index, value):
+def _append_to_diff(diff, index, candidate_value, control_value):
+    control_value = int(control_value)
     diff['indices'].append(index)
-    diff['diff_values'].append(value)
+    diff['candidate_values'].append(candidate_value)
+    diff['control_values'].append(control_value)
+    diff['candidate_control_diff'].append(candidate_value - control_value)
 
 
 if __name__ == "__main__":
