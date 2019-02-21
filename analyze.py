@@ -12,6 +12,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def parse_log_file(args):
     """
     Parse each row of the log file into a list, and add it to a list containing all entries
@@ -28,6 +29,7 @@ def parse_log_file(args):
                               "report_config_id": log_line.split('\t')[2]})
     return full_diff
 
+
 def initialize_csv(args):
     """
     Create the csv and add in the headers
@@ -41,6 +43,7 @@ def initialize_csv(args):
                                 'i_total_records_diff',
                                 'total_row_diff_indices',
                                 'total_row_diff_values'])
+
 
 def analyze_ucr_diff(args, full_diff):
     """
@@ -70,6 +73,7 @@ def analyze_ucr_diff(args, full_diff):
                                       total_row_diff['indices'],
                                       total_row_diff['diff_values']])
 
+
 def _append_to_csv(args, csv_row):
     """
     Append a row to the csv
@@ -79,6 +83,7 @@ def _append_to_csv(args, csv_row):
     with open(args.output_file, mode='a') as fd:
         analysis_writer = csv.writer(fd, delimiter=',')
         analysis_writer.writerow(csv_row)
+
 
 def _is_completely_different(diff_line):
     """
@@ -90,6 +95,7 @@ def _is_completely_different(diff_line):
         return True
     return False
 
+
 def _get_i_total_records_diff(diff_line):
     """
     Gets the diff in total records (ie number of AWC's)
@@ -100,6 +106,7 @@ def _get_i_total_records_diff(diff_line):
         if diff_line[1][0][0] == 'iTotalRecords':
             return diff_line[1][1]
     return 0
+
 
 def _get_total_row_diff(diff_line):
     """
