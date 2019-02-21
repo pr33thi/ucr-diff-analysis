@@ -36,7 +36,11 @@ def initialize_csv(args):
     with open(args.output_file, mode='w') as output_file:
         output_writer = csv.writer(output_file, delimiter=',')
         output_writer.writerow(["Log file: {}".format(args.log_filename)])
-        output_writer.writerow(['index #', 'report_config_id', 'completely_different', 'i_total_records_diff', 'total_row_diff'])
+        output_writer.writerow(['index #', 'report_config_id',
+                                'completely_different',
+                                'i_total_records_diff',
+                                'total_row_diff_indices',
+                                'total_row_diff_values'])
 
 def analyze_ucr_diff(args, full_diff):
     """
@@ -60,7 +64,11 @@ def analyze_ucr_diff(args, full_diff):
         if not completely_different:
             i_total_records_diff = _get_i_total_records_diff(diff_analysis)
             total_row_diff = _get_total_row_diff(diff_analysis)
-        _append_to_csv(args, csv_row=[index, report_config_id, completely_different, i_total_records_diff, total_row_diff])
+        _append_to_csv(args, csv_row=[index, report_config_id,
+                                      completely_different,
+                                      i_total_records_diff,
+                                      total_row_diff['indices'],
+                                      total_row_diff['diff_values']])
 
 def _append_to_csv(args, csv_row):
     """
@@ -99,7 +107,7 @@ def _get_total_row_diff(diff_line):
     :param diff_line: The line of the diff that is being analyzed
     :return: The difference in the 'Totals' row of the report (if no entry is found, returns 0 by default)
     """
-    total_row_diff = []
+    total_row_diff = {'diff_values': [], 'indices': []}
     for diff_entry in diff_line:
         if diff_entry[0][0] == 'total_row':
             try:
@@ -109,9 +117,15 @@ def _get_total_row_diff(diff_line):
             except IndexError:
                 total_row_diff.append("Malformed total_row: {}".format(diff_entry))
             if len(diff_entry_current_row) == 1: # The whole row is different
+                for index, nonzero_diff in enumerate(diff_value[1:]):
+                    if not nonzero_diff:
+                        total_row_diff['indices'].append(index)
+                        total_row_diff['diff_values'].append(nonzero_diff)
+                return total_row_diff
                 return diff_value[1:]
             else: # only certain entries are different
-                total_row_diff.append('index: {}, value: {}'.format(diff_entry_current_row[1], diff_value))
+                total_row_diff['indices'].append(diff_entry_current_row[1])
+                total_row_diff['diff_values'].append(diff_value)
     return total_row_diff
 
 if __name__ == "__main__":
