@@ -112,17 +112,15 @@ def _get_total_row_diff(diff_line):
         if diff_entry[0][0] == 'total_row':
             try:
                 diff_entry_current_row = diff_entry[0]
-                diff_entry_next_row = diff_entry[1]
-                diff_value = diff_entry_next_row
+                diff_value = diff_entry[1]
             except IndexError:
                 total_row_diff.append("Malformed total_row: {}".format(diff_entry))
             if len(diff_entry_current_row) == 1: # The whole row is different
                 for index, nonzero_diff in enumerate(diff_value[1:]):
-                    if not nonzero_diff:
+                    if nonzero_diff:
                         total_row_diff['indices'].append(index)
                         total_row_diff['diff_values'].append(nonzero_diff)
                 return total_row_diff
-                return diff_value[1:]
             else: # only certain entries are different
                 total_row_diff['indices'].append(diff_entry_current_row[1])
                 total_row_diff['diff_values'].append(diff_value)
