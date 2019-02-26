@@ -25,7 +25,8 @@ def parse_log_file(args):
     with open(log_file, 'r') as file:
         log_file = file.readlines()
         for index, log_line in enumerate(log_file):
-            full_diff.append({"candidate_diff": eval(log_line.split('\t')[5].replace("null", "None")),
+            full_diff.append({"filters": log_line.split('\t')[3].replace("null", "None"),
+                              "candidate_diff": eval(log_line.split('\t')[5].replace("null", "None")),
                               "control_values": eval(log_line.split('\t')[4].replace("null", "None")),
                               "report_config_id": log_line.split('\t')[2]})
     return full_diff
@@ -44,8 +45,9 @@ def initialize_csv(args):
                                 'i_total_records_diff',
                                 'total_row_diff_indices',
                                 'total_row_candidate_values',
-                                'total_row_candidate_values',
-                                'candidate - control value'])
+                                'total_row_control_values',
+                                'candidate - control value',
+                                'filters'])
 
 
 def analyze_ucr_diff(args, full_diff):
@@ -71,7 +73,8 @@ def analyze_ucr_diff(args, full_diff):
                                       _get_i_total_records_diff(candidate_diff), total_row_diff['indices'],
                                       total_row_diff['candidate_values'],
                                       total_row_diff['control_values'],
-                                      total_row_diff['candidate_control_diff']])
+                                      total_row_diff['candidate_control_diff'],
+                                      diff['filters']])
 
 
 def _append_to_csv(args, csv_row):
